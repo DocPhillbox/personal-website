@@ -1,7 +1,6 @@
 import { useMemo } from 'react'
 import { Line } from '@react-three/drei'
 
-// Anneau pointillé + petits repères façon instrument de mesure / schéma technique.
 export default function OrbitRing({ radius, color = '#26314a' }) {
   const points = useMemo(() => {
     const segments = 128

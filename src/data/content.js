@@ -1,12 +1,12 @@
 export const PROFILE = {
-  name: 'Alex Moreau',
-  role: 'Ingénieur Développement',
-  status: 'DISPONIBLE',
+  name: 'Bastien Andrey',
+  role: 'Ingénieur en informatique logiciel',
+  status: 'EN EMPLOI',
   location: 'Suisse',
-  email: 'alex.moreau@example.com',
+  email: 'contact@docphillbox.dev',
   socials: [
-    { label: 'GitHub', url: 'https://github.com/' },
-    { label: 'LinkedIn', url: 'https://linkedin.com/' },
+    { label: 'GitHub', url: 'https://github.com/DocPhillbox' },
+    { label: 'LinkedIn', url: 'https://www.linkedin.com/in/bastien-andrey-710a38210/' },
   ],
 }
 
@@ -28,8 +28,8 @@ export const SECTIONS = [
       "Ce site est lui-même un petit système : chaque planète est un module, chaque orbite une dépendance stable.",
     ],
     meta: [
-      { label: 'Basé à', value: 'Suisse' },
-      { label: 'Expérience', value: '5+ ans' },
+      { label: 'Basé en', value: 'Suisse' },
+      { label: 'Expérience', value: '1+ année' },
       { label: 'Langues', value: 'FR · EN' },
     ],
   },
@@ -47,15 +47,15 @@ export const SECTIONS = [
     categories: [
       {
         label: 'Frontend',
-        items: ['React', 'TypeScript', 'Three.js', 'CSS / Design systems'],
+        items: ['React', 'Blazor', 'Three.js'],
       },
       {
         label: 'Backend',
-        items: ['Node.js', 'Python', 'PostgreSQL', 'API REST / GraphQL'],
+        items: ['NextJS', 'FastAPI', 'Gin', 'ASP.NET', 'PostgreSQL'],
       },
       {
         label: 'Outils',
-        items: ['Docker', 'CI/CD', 'Git', 'AWS'],
+        items: ['Docker', 'CI/CD', 'Git'],
       },
     ],
   },
