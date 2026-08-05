@@ -1,0 +1,68 @@
+/* ── Tokens ──────────────────────────────────────────────── */
+:root {
+  --bg-void: #0b1220;
+  --surface-panel: #121a2bf2;
+  --surface-panel-solid: #121a2b;
+  --hairline: #26314a;
+  --text-primary: #e8ecf4;
+  --text-muted: #7c8aa6;
+  --text-dim: #4b5876;
+
+  --accent-bio: #5eb8ff;
+  --accent-skills: #4fd6b0;
+  --accent-projects: #ff8a5c;
+  --accent-core: #ffcf5c;
+
+  --font-display: 'Space Grotesk', sans-serif;
+  --font-body: 'IBM Plex Sans', sans-serif;
+  --font-mono: 'IBM Plex Mono', monospace;
+
+  color-scheme: dark;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  background: var(--bg-void);
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  -webkit-font-smoothing: antialiased;
+  overflow: hidden;
+}
+
+a {
+  color: inherit;
+}
+
+button {
+  font-family: inherit;
+  cursor: pointer;
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent-bio);
+  outline-offset: 3px;
+}
+
+::selection {
+  background: var(--accent-bio);
+  color: var(--bg-void);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    transition-duration: 0.001ms !important;
+  }
+}
