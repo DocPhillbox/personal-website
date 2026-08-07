@@ -10,7 +10,6 @@
   z-index: 0;
 }
 
-/* ── Header ─────────────────────────────────────────────── */
 .header {
   position: fixed;
   top: 0;
@@ -74,7 +73,6 @@
   text-align: center;
 }
 
-/* ── Nav (liste accessible des orbites) ────────────────────*/
 .nav-list {
   position: fixed;
   bottom: 32px;
@@ -119,7 +117,6 @@
   background: var(--surface-panel-solid);
 }
 
-/* ── Panneau d'information ─────────────────────────────────*/
 .panel {
   position: fixed;
   top: 0;
@@ -258,7 +255,6 @@
   padding-bottom: 1px;
 }
 
-/* ── Responsive ─────────────────────────────────────────── */
 @media (max-width: 720px) {
   .header {
     padding: 20px;

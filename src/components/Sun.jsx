@@ -15,7 +15,7 @@ export default function Sun() {
     <group>
       <pointLight color="#ffcf5c" intensity={9} distance={20} decay={2} />
       <mesh ref={meshRef}>
-        <icosahedronGeometry args={[0.95, 1]} />
+        <icosahedronGeometry args={[1.25, 1]} />
         <meshStandardMaterial
           color="#ffcf5c"
           emissive="#ffcf5c"

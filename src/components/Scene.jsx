@@ -16,8 +16,6 @@ function SceneInner({ sections, selectedId, onSelect, reducedMotion }) {
     elapsedRef.current = clock.elapsedTime
   })
 
-  // Quand la sélection change : on fige le temps (le système "se met en pause")
-  // et on calcule une bonne fois la position 3D de la planète ciblée pour la caméra.
   useEffect(() => {
     if (!selectedId) {
       frozenTimeRef.current = null

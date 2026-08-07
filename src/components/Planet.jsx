@@ -1,11 +1,18 @@
-import { useRef, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { Html } from '@react-three/drei'
+import { DoubleSide } from 'three'
+import { buildPlanetGeometry, buildRingGeometry } from '../utils/planetSurface.js'
 
 export default function Planet({ data, frozenTimeRef, onSelect, isSelected, isAnySelected, spinEnabled }) {
   const groupRef = useRef()
   const meshRef = useRef()
+  const ringRef = useRef()
   const [hovered, setHovered] = useState(false)
+  const isGas = data.type === 'gas'
+
+  const geometry = useMemo(() => buildPlanetGeometry(data), [data.id, data.type, data.size, data.color, data.bandColor])
+  const ringGeometry = useMemo(() => (isGas ? buildRingGeometry(data) : null), [isGas, data.id, data.size])
 
   useFrame(({ clock }, delta) => {
     const t = frozenTimeRef.current ?? clock.elapsedTime
@@ -19,6 +26,7 @@ export default function Planet({ data, frozenTimeRef, onSelect, isSelected, isAn
       meshRef.current.scale.x += (targetScale - meshRef.current.scale.x) * Math.min(delta * 6, 1)
       meshRef.current.scale.y += (targetScale - meshRef.current.scale.y) * Math.min(delta * 6, 1)
       meshRef.current.scale.z += (targetScale - meshRef.current.scale.z) * Math.min(delta * 6, 1)
+      if (ringRef.current) ringRef.current.scale.setScalar(meshRef.current.scale.x)
     }
   })
 
@@ -28,6 +36,7 @@ export default function Planet({ data, frozenTimeRef, onSelect, isSelected, isAn
     <group ref={groupRef}>
       <mesh
         ref={meshRef}
+        geometry={geometry}
         onClick={(e) => {
           e.stopPropagation()
           onSelect(data.id)
@@ -42,16 +51,26 @@ export default function Planet({ data, frozenTimeRef, onSelect, isSelected, isAn
           document.body.style.cursor = 'auto'
         }}
       >
-        <icosahedronGeometry args={[data.size, 1]} />
         <meshStandardMaterial
-          color={data.color}
+          vertexColors
           flatShading
-          roughness={0.6}
-          metalness={0.1}
+          roughness={isGas ? 0.4 : 0.75}
+          metalness={isGas ? 0.05 : 0.15}
           transparent
           opacity={dimmed ? 0.25 : 1}
         />
       </mesh>
+
+      {isGas && (
+        <mesh ref={ringRef} geometry={ringGeometry} rotation={[Math.PI / 2 - 0.2, 0, 0]} raycast={() => null}>
+          <meshBasicMaterial
+            color={data.bandColor || data.color}
+            side={DoubleSide}
+            transparent
+            opacity={dimmed ? 0.08 : 0.35}
+          />
+        </mesh>
+      )}
 
       {(hovered || isSelected) && !isAnySelected && (
         <Html center distanceFactor={8} position={[0, data.size + 0.35, 0]} occlude={false}>
