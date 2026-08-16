@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Canvas, useFrame } from '@react-three/fiber'
-import { Stars } from '@react-three/drei'
+import { OrbitControls, Stars } from '@react-three/drei'
 import * as THREE from 'three'
 import Sun from './Sun.jsx'
 import Planet from './Planet.jsx'
@@ -11,6 +11,7 @@ function SceneInner({ sections, selectedId, onSelect, reducedMotion }) {
   const elapsedRef = useRef(0)
   const frozenTimeRef = useRef(null)
   const [selectedPos, setSelectedPos] = useState(null)
+  const controlsRef = useRef(null)
 
   useFrame(({ clock }) => {
     elapsedRef.current = clock.elapsedTime
@@ -49,7 +50,16 @@ function SceneInner({ sections, selectedId, onSelect, reducedMotion }) {
         </group>
       ))}
 
-      <CameraRig selectedPos={selectedPos} reducedMotion={reducedMotion} />
+      <OrbitControls
+        ref={controlsRef}
+        enablePan={false}
+        enableDamping
+        dampingFactor={0.08}
+        minDistance={1.6}
+        maxDistance={18}
+        mouseButtons={{ LEFT: undefined, MIDDLE: THREE.MOUSE.DOLLY, RIGHT: THREE.MOUSE.ROTATE }}
+      />
+      <CameraRig selectedPos={selectedPos} reducedMotion={reducedMotion} controlsRef={controlsRef} />
     </>
   )
 }
