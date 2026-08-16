@@ -4,15 +4,21 @@ import { Html } from '@react-three/drei'
 import { AdditiveBlending, DoubleSide } from 'three'
 import { buildRingGeometry } from '../utils/planetSurface.js'
 import { createGasGiantTexture, createGlowTexture, createRingTexture, createTelluricMaps } from '../utils/planetTextures.js'
+import { orbitPositionAt } from '../utils/orbit.js'
+import { animateMapFragment } from '../utils/shaderInjection.js'
+import { GAS_SURFACE_FRAGMENT, GAS_SURFACE_PARS } from '../shaders/index.js'
+import Atmosphere from './Atmosphere.jsx'
 import Moon from './Moon.jsx'
 
 const SPHERE_SEGMENTS = 48
 
-export default function Planet({ data, frozenTimeRef, onSelect, isSelected, isAnySelected, spinEnabled }) {
+export default function Planet({ data, onSelect, isSelected, isAnySelected, spinEnabled }) {
   const groupRef = useRef()
   const meshRef = useRef()
   const ringRef = useRef()
   const glowRef = useRef()
+  const atmosphereRef = useRef()
+  const gasTime = useRef({ value: 0 })
   const [hovered, setHovered] = useState(false)
   const isGas = data.type === 'gas'
 
@@ -34,12 +40,22 @@ export default function Planet({ data, frozenTimeRef, onSelect, isSelected, isAn
     [isGas],
   )
 
+  const gasShader = useMemo(
+    () =>
+      animateMapFragment({
+        key: 'gas-surface',
+        pars: GAS_SURFACE_PARS,
+        fragment: GAS_SURFACE_FRAGMENT,
+        uniforms: { uTime: gasTime.current },
+      }),
+    [],
+  )
+
   useFrame(({ clock }, delta) => {
-    const t = frozenTimeRef.current ?? clock.elapsedTime
-    const angle = data.phase + t * data.speed
     if (groupRef.current) {
-      groupRef.current.position.set(Math.cos(angle) * data.orbitRadius, 0, Math.sin(angle) * data.orbitRadius)
+      orbitPositionAt(data, clock.elapsedTime, groupRef.current.position)
     }
+    if (spinEnabled) gasTime.current.value += delta
     if (meshRef.current) {
       if (spinEnabled) meshRef.current.rotation.y += delta * 0.3
       const targetScale = isSelected ? 1.35 : hovered ? 1.15 : 1
@@ -48,6 +64,7 @@ export default function Planet({ data, frozenTimeRef, onSelect, isSelected, isAn
       meshRef.current.scale.z += (targetScale - meshRef.current.scale.z) * Math.min(delta * 6, 1)
       if (ringRef.current) ringRef.current.scale.setScalar(meshRef.current.scale.x)
       if (glowRef.current) glowRef.current.scale.setScalar(data.size * 4.2 * meshRef.current.scale.x)
+      if (atmosphereRef.current) atmosphereRef.current.scale.setScalar(meshRef.current.scale.x)
     }
   })
 
@@ -75,6 +92,8 @@ export default function Planet({ data, frozenTimeRef, onSelect, isSelected, isAn
         {isGas ? (
           <meshStandardMaterial
             map={gasTexture}
+            onBeforeCompile={gasShader.onBeforeCompile}
+            customProgramCacheKey={gasShader.customProgramCacheKey}
             roughness={0.4}
             metalness={0.05}
             transparent
@@ -84,13 +103,25 @@ export default function Planet({ data, frozenTimeRef, onSelect, isSelected, isAn
           <meshStandardMaterial
             map={telluricMaps.map}
             roughnessMap={telluricMaps.roughnessMap}
+            normalMap={telluricMaps.normalMap}
             roughness={1}
-            metalness={0.1}
+            metalness={0}
             transparent
             opacity={dimmed ? 0.25 : 1}
           />
         )}
       </mesh>
+
+      {data.atmosphere && (
+        <Atmosphere
+          ref={atmosphereRef}
+          radius={data.size * 1.14}
+          color={data.atmosphere.color}
+          intensity={data.atmosphere.intensity ?? 0.9}
+          power={data.atmosphere.power ?? 3}
+          opacity={dimmed ? 0.25 : 1}
+        />
+      )}
 
       {isGas && (
         <mesh ref={ringRef} geometry={ringGeometry} rotation={[Math.PI / 2 - 0.2, 0, 0]} raycast={() => null}>
@@ -116,9 +147,7 @@ export default function Planet({ data, frozenTimeRef, onSelect, isSelected, isAn
         </sprite>
       )}
 
-      {data.moon && (
-        <Moon data={data.moon} frozenTimeRef={frozenTimeRef} spinEnabled={spinEnabled} />
-      )}
+      {data.moon && <Moon data={data.moon} spinEnabled={spinEnabled} />}
 
       {(hovered || isSelected) && !isAnySelected && (
         <Html center distanceFactor={8} position={[0, data.size + 0.35, 0]} occlude={false}>

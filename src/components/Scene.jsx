@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState } from 'react'
-import { Canvas, useFrame } from '@react-three/fiber'
+import { useMemo, useRef } from 'react'
+import { Canvas } from '@react-three/fiber'
 import { OrbitControls, Stars } from '@react-three/drei'
 import * as THREE from 'three'
 import Sun from './Sun.jsx'
@@ -8,40 +8,24 @@ import OrbitRing from './OrbitRing.jsx'
 import CameraRig from './CameraRig.jsx'
 
 function SceneInner({ sections, selectedId, onSelect, reducedMotion }) {
-  const elapsedRef = useRef(0)
-  const frozenTimeRef = useRef(null)
-  const [selectedPos, setSelectedPos] = useState(null)
   const controlsRef = useRef(null)
-
-  useFrame(({ clock }) => {
-    elapsedRef.current = clock.elapsedTime
-  })
-
-  useEffect(() => {
-    if (!selectedId) {
-      frozenTimeRef.current = null
-      setSelectedPos(null)
-      return
-    }
-    frozenTimeRef.current = elapsedRef.current
-    const sec = sections.find((s) => s.id === selectedId)
-    if (sec) {
-      const angle = sec.phase + frozenTimeRef.current * sec.speed
-      setSelectedPos(new THREE.Vector3(Math.cos(angle) * sec.orbitRadius, 0, Math.sin(angle) * sec.orbitRadius))
-    }
-  }, [selectedId, sections])
+  const selectedSection = useMemo(
+    () => sections.find((s) => s.id === selectedId) || null,
+    [sections, selectedId],
+  )
 
   return (
     <>
-      <ambientLight intensity={0.4} />
-      <Sun />
+      <ambientLight intensity={0.55} />
+      {/* Faint fill so the night side reads as shadowed rather than as a void. */}
+      <hemisphereLight args={['#8fb4ff', '#241a2e', 0.35]} />
+      <Sun animated={!reducedMotion} />
 
       {sections.map((s) => (
         <group key={s.id}>
           <OrbitRing radius={s.orbitRadius} />
           <Planet
             data={s}
-            frozenTimeRef={frozenTimeRef}
             onSelect={onSelect}
             isSelected={selectedId === s.id}
             isAnySelected={Boolean(selectedId)}
@@ -59,7 +43,7 @@ function SceneInner({ sections, selectedId, onSelect, reducedMotion }) {
         maxDistance={18}
         mouseButtons={{ LEFT: undefined, MIDDLE: THREE.MOUSE.DOLLY, RIGHT: THREE.MOUSE.ROTATE }}
       />
-      <CameraRig selectedPos={selectedPos} reducedMotion={reducedMotion} controlsRef={controlsRef} />
+      <CameraRig selectedSection={selectedSection} reducedMotion={reducedMotion} controlsRef={controlsRef} />
     </>
   )
 }

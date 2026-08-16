@@ -98,18 +98,21 @@ const OCEAN_PALETTE = {
   deepOcean: '#0f4c81',
   shallowOcean: '#2f9fd0',
   lowland: '#3fa14a',
-  dryland: '#d9b35f',
-  highland: '#8a6239',
-  pole: '#f4f9ff',
+  dryland: '#9d9d9d',
+  highland: '#888888',
+  pole: '#549bf1',
 }
 
 const DESERT_PALETTE = {
-  plains: '#c14e1d',
-  dune: '#e2812f',
-  highland: '#8a3418',
-  peak: '#4a1c0e',
-  pole: '#f0e6da',
+  plains: '#ba8221',
+  dune: '#e29a2f',
+  highland: '#8a6d18',
+  peak: '#db5a19',
+  pole: '#d5811b',
 }
+
+// One knob for how pronounced the terrain relief reads across both biomes.
+const NORMAL_STRENGTH_SCALE = 2
 
 export function createTelluricMaps(data, width = 512, height = 256) {
   const seed = seedFromId(data.id)
@@ -117,6 +120,9 @@ export function createTelluricMaps(data, width = 512, height = 256) {
   const p = isDesert ? DESERT_PALETTE : OCEAN_PALETTE
 
   const roughData = new Float32Array(width * height)
+  const bumpData = new Float32Array(width * height)
+
+  const SEA_LEVEL = 0.48
 
   const map = makeCanvasTexture(width, height, (out, w, h) => {
     for (let y = 0; y < h; y++) {
@@ -126,34 +132,43 @@ export function createTelluricMaps(data, width = 512, height = 256) {
         directionFromUV(u, v, _dir)
         const elevation = fbm3D(_dir.x * 2.2, _dir.y * 2.2, _dir.z * 2.2, seed, 4)
         const detail = fbm3D(_dir.x * 3.3, _dir.y * 3.3, _dir.z * 3.3, seed + 31, 3)
+        const grain = fbm3D(_dir.x * 14, _dir.y * 14, _dir.z * 14, seed + 61, 3)
 
         let rough
+        let bump
         if (isDesert) {
           if (elevation < 0.5) {
             _pixel.set(p.plains).lerp(_tmp.set(p.dune), smoothstep(detail))
-            rough = 0.75
+            rough = 0.88
           } else if (elevation < 0.78) {
             _pixel.set(p.dune).lerp(_tmp.set(p.highland), smoothstep((elevation - 0.5) / 0.28))
-            rough = 0.85
+            rough = 0.9
           } else {
             _pixel.set(p.highland).lerp(_tmp.set(p.peak), smoothstep((elevation - 0.78) / 0.22))
             rough = 0.95
           }
+          // Dunes and ridges everywhere, plus fine sand grain.
+          bump = elevation * 0.82 + grain * 0.18
         } else if (elevation < 0.42) {
           _pixel.set(p.deepOcean).lerp(_tmp.set(p.shallowOcean), smoothstep(elevation / 0.42))
-          rough = 0.12
-        } else if (elevation < 0.48) {
+          rough = 0.4
+          bump = SEA_LEVEL
+        } else if (elevation < SEA_LEVEL) {
           _pixel.set(p.shallowOcean)
-          rough = 0.2
+          rough = 0.45
+          bump = SEA_LEVEL
         } else if (elevation < 0.74) {
           _pixel.set(p.lowland).lerp(_tmp.set(p.dryland), 1 - smoothstep(detail))
-          rough = 0.8
+          rough = 0.9
+          bump = elevation * 0.85 + grain * 0.15
         } else if (elevation < 0.87) {
           _pixel.set(p.highland).offsetHSL(0, 0, (elevation - 0.74) * 0.4)
-          rough = 0.92
+          rough = 0.95
+          bump = elevation * 0.85 + grain * 0.15
         } else {
           _pixel.set(p.pole)
-          rough = 0.7
+          rough = 0.75
+          bump = elevation * 0.85 + grain * 0.15
         }
 
         const lat = Math.abs(v - 0.5) * 2
@@ -161,7 +176,7 @@ export function createTelluricMaps(data, width = 512, height = 256) {
         if (lat > capThreshold) {
           const capT = smoothstep((lat - capThreshold) / (1 - capThreshold))
           _pixel.lerp(_tmp.set(p.pole), capT * (isDesert ? 0.65 : 0.9))
-          rough = lerp(rough, 0.75, capT)
+          rough = lerp(rough, 0.8, capT)
         }
 
         const i = (y * w + x) * 4
@@ -170,6 +185,7 @@ export function createTelluricMaps(data, width = 512, height = 256) {
         out[i + 2] = _pixel.b * 255
         out[i + 3] = 255
         roughData[y * w + x] = rough
+        bumpData[y * w + x] = bump
       }
     }
   })
@@ -185,7 +201,40 @@ export function createTelluricMaps(data, width = 512, height = 256) {
     }
   })
 
-  return { map, roughnessMap }
+  // A tangent-space normal map derived from the height field. three's bumpMap
+  // path reconstructs slopes from screen-space derivatives, which washes out
+  // almost entirely on a height field this smooth; encoding the gradient
+  // directly gives relief that actually survives to the lit pixel.
+  const normalMap = makeCanvasTexture(width, height, (out, w, h) => {
+    const strength = (isDesert ? 14 : 16) * NORMAL_STRENGTH_SCALE
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        const xl = (x - 1 + w) % w
+        const xr = (x + 1) % w
+        const yu = Math.max(0, y - 1)
+        const yd = Math.min(h - 1, y + 1)
+
+        const dx = (bumpData[y * w + xr] - bumpData[y * w + xl]) * strength
+        const dy = (bumpData[yd * w + x] - bumpData[yu * w + x]) * strength
+
+        let nx = -dx
+        let ny = -dy
+        let nz = 1
+        const len = Math.sqrt(nx * nx + ny * ny + nz * nz)
+        nx /= len
+        ny /= len
+        nz /= len
+
+        const i = (y * w + x) * 4
+        out[i] = (nx * 0.5 + 0.5) * 255
+        out[i + 1] = (ny * 0.5 + 0.5) * 255
+        out[i + 2] = (nz * 0.5 + 0.5) * 255
+        out[i + 3] = 255
+      }
+    }
+  })
+
+  return { map, roughnessMap, normalMap }
 }
 
 export function createGasGiantTexture(data, width = 512, height = 256) {
