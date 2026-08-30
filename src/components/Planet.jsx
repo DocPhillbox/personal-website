@@ -3,29 +3,34 @@ import { useFrame } from '@react-three/fiber'
 import { Html } from '@react-three/drei'
 import { AdditiveBlending, DoubleSide } from 'three'
 import { buildRingGeometry } from '../utils/planetSurface.js'
-import { createGasGiantTexture, createGlowTexture, createRingTexture, createTelluricMaps } from '../utils/planetTextures.js'
+import {
+  createCloudTexture,
+  createGasGiantTexture,
+  createGlowTexture,
+  createRingTexture,
+  createTelluricMaps,
+} from '../utils/planetTextures.js'
 import { orbitPositionAt } from '../utils/orbit.js'
 import { animateMapFragment } from '../utils/shaderInjection.js'
 import { GAS_SURFACE_FRAGMENT, GAS_SURFACE_PARS } from '../shaders/index.js'
 import Atmosphere from './Atmosphere.jsx'
 import Moon from './Moon.jsx'
 
-const SPHERE_SEGMENTS = 48
+const SPHERE_SEGMENTS = 64
 
 export default function Planet({ data, onSelect, isSelected, isAnySelected, spinEnabled }) {
   const groupRef = useRef()
   const meshRef = useRef()
   const ringRef = useRef()
   const glowRef = useRef()
+  const cloudRef = useRef()
   const atmosphereRef = useRef()
   const gasTime = useRef({ value: 0 })
   const [hovered, setHovered] = useState(false)
   const isGas = data.type === 'gas'
 
-  const telluricMaps = useMemo(
-    () => (isGas ? null : createTelluricMaps(data)),
-    [isGas, data.id, data.color],
-  )
+  const telluricMaps = useMemo(() => (isGas ? null : createTelluricMaps(data)), [isGas, data.id, data.biome])
+  const cloudTexture = useMemo(() => (data.clouds ? createCloudTexture(data) : null), [data.clouds, data.id])
   const gasTexture = useMemo(
     () => (isGas ? createGasGiantTexture(data) : null),
     [isGas, data.id, data.color, data.bandColor],
@@ -35,10 +40,7 @@ export default function Planet({ data, onSelect, isSelected, isAnySelected, spin
     () => (isGas ? createRingTexture(data) : null),
     [isGas, data.id, data.color, data.bandColor],
   )
-  const glowTexture = useMemo(
-    () => (isGas ? createGlowTexture({ peakAlpha: 0.4, spread: 0.45 }) : null),
-    [isGas],
-  )
+  const glowTexture = useMemo(() => (isGas ? createGlowTexture({ peakAlpha: 0.4, spread: 0.45 }) : null), [isGas])
 
   const gasShader = useMemo(
     () =>
@@ -59,12 +61,19 @@ export default function Planet({ data, onSelect, isSelected, isAnySelected, spin
     if (meshRef.current) {
       if (spinEnabled) meshRef.current.rotation.y += delta * 0.3
       const targetScale = isSelected ? 1.35 : hovered ? 1.15 : 1
-      meshRef.current.scale.x += (targetScale - meshRef.current.scale.x) * Math.min(delta * 6, 1)
-      meshRef.current.scale.y += (targetScale - meshRef.current.scale.y) * Math.min(delta * 6, 1)
-      meshRef.current.scale.z += (targetScale - meshRef.current.scale.z) * Math.min(delta * 6, 1)
-      if (ringRef.current) ringRef.current.scale.setScalar(meshRef.current.scale.x)
-      if (glowRef.current) glowRef.current.scale.setScalar(data.size * 4.2 * meshRef.current.scale.x)
-      if (atmosphereRef.current) atmosphereRef.current.scale.setScalar(meshRef.current.scale.x)
+      const s = meshRef.current.scale
+      s.x += (targetScale - s.x) * Math.min(delta * 6, 1)
+      s.y += (targetScale - s.y) * Math.min(delta * 6, 1)
+      s.z += (targetScale - s.z) * Math.min(delta * 6, 1)
+
+      if (ringRef.current) ringRef.current.scale.setScalar(s.x)
+      if (glowRef.current) glowRef.current.scale.setScalar(data.size * 4.2 * s.x)
+      if (atmosphereRef.current) atmosphereRef.current.scale.setScalar(s.x)
+      if (cloudRef.current) {
+        cloudRef.current.scale.setScalar(s.x)
+        // Slightly faster than the surface, so the deck visibly drifts over it.
+        if (spinEnabled) cloudRef.current.rotation.y += delta * 0.42
+      }
     }
   })
 
@@ -94,8 +103,8 @@ export default function Planet({ data, onSelect, isSelected, isAnySelected, spin
             map={gasTexture}
             onBeforeCompile={gasShader.onBeforeCompile}
             customProgramCacheKey={gasShader.customProgramCacheKey}
-            roughness={0.4}
-            metalness={0.05}
+            roughness={0.55}
+            metalness={0}
             transparent
             opacity={dimmed ? 0.25 : 1}
           />
@@ -112,6 +121,20 @@ export default function Planet({ data, onSelect, isSelected, isAnySelected, spin
         )}
       </mesh>
 
+      {cloudTexture && (
+        <mesh ref={cloudRef} raycast={() => null}>
+          <sphereGeometry args={[data.size * 1.018, SPHERE_SEGMENTS, SPHERE_SEGMENTS]} />
+          <meshStandardMaterial
+            map={cloudTexture}
+            transparent
+            depthWrite={false}
+            roughness={1}
+            metalness={0}
+            opacity={dimmed ? 0.2 : 0.9}
+          />
+        </mesh>
+      )}
+
       {data.atmosphere && (
         <Atmosphere
           ref={atmosphereRef}
@@ -125,12 +148,7 @@ export default function Planet({ data, onSelect, isSelected, isAnySelected, spin
 
       {isGas && (
         <mesh ref={ringRef} geometry={ringGeometry} rotation={[Math.PI / 2 - 0.2, 0, 0]} raycast={() => null}>
-          <meshBasicMaterial
-            map={ringTexture}
-            side={DoubleSide}
-            transparent
-            opacity={dimmed ? 0.15 : 0.7}
-          />
+          <meshBasicMaterial map={ringTexture} side={DoubleSide} transparent opacity={dimmed ? 0.15 : 0.7} />
         </mesh>
       )}
 
@@ -149,23 +167,13 @@ export default function Planet({ data, onSelect, isSelected, isAnySelected, spin
 
       {data.moon && <Moon data={data.moon} spinEnabled={spinEnabled} />}
 
+      {/* No distanceFactor on the label below: that prop is what scales it with
+          camera distance. Without it the tag keeps a constant on-screen size. */}
       {(hovered || isSelected) && !isAnySelected && (
-        <Html center distanceFactor={8} position={[0, data.size + 0.35, 0]} occlude={false}>
-          <div
-            style={{
-              fontFamily: 'IBM Plex Mono, monospace',
-              fontSize: '11px',
-              letterSpacing: '0.05em',
-              color: data.color,
-              whiteSpace: 'nowrap',
-              background: '#0b1220cc',
-              border: '1px solid #26314a',
-              borderRadius: '4px',
-              padding: '4px 8px',
-              pointerEvents: 'none',
-            }}
-          >
-            {data.index} — {data.label.toUpperCase()}
+        <Html center position={[0, data.size + 0.42, 0]} occlude={false}>
+          <div className="planet-tag" style={{ '--tag-accent': data.color }}>
+            <span className="planet-tag__index">{data.index}</span>
+            {data.label.toUpperCase()}
           </div>
         </Html>
       )}

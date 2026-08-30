@@ -1,39 +1,50 @@
-import { useMemo } from 'react'
-import { Line } from '@react-three/drei'
+import { useMemo, useRef } from 'react'
+import { useFrame } from '@react-three/fiber'
+import * as THREE from 'three'
+import { orbitRingFragmentShader, orbitRingVertexShader } from '../shaders/index.js'
 
-export default function OrbitRing({ radius, color = '#26314a' }) {
-  const points = useMemo(() => {
-    const segments = 128
-    const pts = []
-    for (let i = 0; i <= segments; i++) {
-      const a = (i / segments) * Math.PI * 2
-      pts.push([Math.cos(a) * radius, 0, Math.sin(a) * radius])
-    }
-    return pts
-  }, [radius])
+const HALF_WIDTH = 0.05
 
-  const ticks = useMemo(() => {
-    const t = []
-    for (let i = 0; i < 4; i++) {
-      const a = (i / 4) * Math.PI * 2
-      const x = Math.cos(a) * radius
-      const z = Math.sin(a) * radius
-      const dx = Math.cos(a) * 0.12
-      const dz = Math.sin(a) * 0.12
-      t.push([
-        [x - dx, 0, z - dz],
-        [x + dx, 0, z + dz],
-      ])
+export default function OrbitRing({ section, color = '#4a5878' }) {
+  const materialRef = useRef()
+  const radius = section.orbitRadius
+
+  const geometry = useMemo(
+    () => new THREE.RingGeometry(radius - HALF_WIDTH, radius + HALF_WIDTH, 256, 1),
+    [radius],
+  )
+
+  const uniforms = useMemo(
+    () => ({
+      uColor: { value: new THREE.Color(color) },
+      uTrailColor: { value: new THREE.Color(section.color) },
+      uRadius: { value: radius },
+      uHalfWidth: { value: HALF_WIDTH },
+      // Scaled with the radius so dash length stays consistent between orbits.
+      uDashCount: { value: Math.round(radius * 8) },
+      uPlanetAngle: { value: 0 },
+      uOpacity: { value: 1 },
+    }),
+    [radius, color, section.color],
+  )
+
+  useFrame(({ clock }) => {
+    if (materialRef.current) {
+      materialRef.current.uniforms.uPlanetAngle.value = section.phase + clock.elapsedTime * section.speed
     }
-    return t
-  }, [radius])
+  })
 
   return (
-    <group>
-      <Line points={points} color={color} dashed dashSize={0.08} gapSize={0.1} transparent opacity={0.5} />
-      {ticks.map((seg, i) => (
-        <Line key={i} points={seg} color={color} transparent opacity={0.8} lineWidth={1} />
-      ))}
-    </group>
+    <mesh geometry={geometry} rotation={[-Math.PI / 2, 0, 0]} raycast={() => null}>
+      <shaderMaterial
+        ref={materialRef}
+        vertexShader={orbitRingVertexShader}
+        fragmentShader={orbitRingFragmentShader}
+        uniforms={uniforms}
+        transparent
+        depthWrite={false}
+        side={THREE.DoubleSide}
+      />
+    </mesh>
   )
 }
