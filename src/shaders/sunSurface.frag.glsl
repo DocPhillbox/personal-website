@@ -5,6 +5,12 @@
   vec2 baseUv = vMapUv;
   vec2 warpP = vec2(baseUv.x * 5.0, baseUv.y * 2.5);
 
+  // Equirectangular UVs converge at the poles, so an unmodified warp there both
+  // over-samples pinched texels and pushes v outside [0,1] into clamped edge
+  // pixels — which is what reads as hard "edges" on the disc. Fade the warp out
+  // before it reaches either pole.
+  float poleFade = smoothstep(0.0, 0.16, baseUv.y) * smoothstep(1.0, 0.84, baseUv.y);
+
   float churnA = pnFbm(warpP + vec2(uTime * 0.20, uTime * 0.085), 5.0);
   float churnB = pnFbm(warpP * 1.8 + vec2(6.1, 2.7) - vec2(uTime * 0.31, 0.0), 9.0);
 
@@ -12,8 +18,9 @@
   float cells = pnFbm(warpP * 3.2 + vec2(uTime * 0.14, uTime * -0.065), 16.0);
 
   vec2 sunUv = baseUv;
-  sunUv.x += (churnA - 0.5) * 0.095;
-  sunUv.y += (churnB - 0.5) * 0.050;
+  sunUv.x += (churnA - 0.5) * 0.095 * poleFade;
+  sunUv.y += (churnB - 0.5) * 0.050 * poleFade;
+  sunUv.y = clamp(sunUv.y, 0.002, 0.998);
 
   vec4 sampledDiffuseColor = texture2D( map, sunUv );
 

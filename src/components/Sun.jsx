@@ -5,7 +5,11 @@ import { createGlowTexture, createSunTexture } from '../utils/planetTextures.js'
 import { animateMapFragment } from '../utils/shaderInjection.js'
 import { SUN_SURFACE_FRAGMENT, SUN_SURFACE_PARS } from '../shaders/index.js'
 
-const GLOW_SCALE = 10.5
+// Two stacked sprites: a tight inner corona over a very wide, very faint outer
+// one. A single gradient stretched this far just looks like a flat disc — the
+// pair is what reads as light actually falling off into space.
+const GLOW_SCALE = 11
+const HALO_SCALE = 26
 
 export default function Sun({ animated = true }) {
   const meshRef = useRef()
@@ -13,7 +17,8 @@ export default function Sun({ animated = true }) {
   const sunTime = useRef({ value: 0 })
 
   const sunTexture = useMemo(() => createSunTexture(), [])
-  const glowTexture = useMemo(() => createGlowTexture({ peakAlpha: 0.5, spread: 0.6 }), [])
+  const glowTexture = useMemo(() => createGlowTexture({ peakAlpha: 0.26, spread: 0.5 }), [])
+  const haloTexture = useMemo(() => createGlowTexture({ size: 512, peakAlpha: 0.15, spread: 0.86 }), [])
 
   const sunShader = useMemo(
     () =>
@@ -41,20 +46,35 @@ export default function Sun({ animated = true }) {
 
   return (
     <group>
-      <pointLight color="#ffcf5c" intensity={6} distance={20} decay={2} />
+      {/* Softened decay (1.6 rather than physical 2) so the outermost world is
+          still legible without blowing out the innermost one. */}
+      <pointLight color="#ffe3bd" intensity={5} distance={48} decay={1.6} />
       <mesh ref={meshRef}>
         <sphereGeometry args={[1.25, 64, 64]} />
+        {/* meshBasicMaterial multiplies its map by `color`, so a neutral grey
+            dims the disc without shifting its hue. */}
         <meshBasicMaterial
           map={sunTexture}
+          color="#bdbdbd"
           onBeforeCompile={sunShader.onBeforeCompile}
           customProgramCacheKey={sunShader.customProgramCacheKey}
           toneMapped={false}
         />
       </mesh>
+      <sprite scale={[HALO_SCALE, HALO_SCALE, 1]} raycast={() => null}>
+        <spriteMaterial
+          map={haloTexture}
+          color="#ffcf9a"
+          transparent
+          opacity={0.3}
+          depthWrite={false}
+          blending={AdditiveBlending}
+        />
+      </sprite>
       <sprite ref={glowRef} scale={[GLOW_SCALE, GLOW_SCALE, 1]} raycast={() => null}>
         <spriteMaterial
           map={glowTexture}
-          color="#ffcf5c"
+          color="#ffd9a8"
           transparent
           depthWrite={false}
           blending={AdditiveBlending}

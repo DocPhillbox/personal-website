@@ -3,12 +3,12 @@ import { useFrame } from '@react-three/fiber'
 import { createMoonTexture } from '../utils/planetTextures.js'
 import { orbitPositionAt } from '../utils/orbit.js'
 
-const SPHERE_SEGMENTS = 24
+const SPHERE_SEGMENTS = 32
 
 export default function Moon({ data, spinEnabled }) {
   const orbitRef = useRef()
   const meshRef = useRef()
-  const texture = useMemo(() => createMoonTexture(data), [data.id, data.color])
+  const maps = useMemo(() => createMoonTexture(data), [data.id, data.color])
 
   useFrame(({ clock }, delta) => {
     if (orbitRef.current) {
@@ -21,7 +21,7 @@ export default function Moon({ data, spinEnabled }) {
     <group ref={orbitRef}>
       <mesh ref={meshRef} raycast={() => null}>
         <sphereGeometry args={[data.size, SPHERE_SEGMENTS, SPHERE_SEGMENTS]} />
-        <meshStandardMaterial map={texture} roughness={0.95} metalness={0.05} />
+        <meshStandardMaterial map={maps.map} normalMap={maps.normalMap} roughness={0.96} metalness={0} />
       </mesh>
     </group>
   )

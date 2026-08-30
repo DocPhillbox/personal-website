@@ -15,6 +15,7 @@ export default function InfoPanel({ section, onClose }) {
         ✕
       </button>
 
+
       <p className="panel__kicker" style={{ color: section.color }}>
         {section.kicker}
       </p>
@@ -67,7 +68,7 @@ export default function InfoPanel({ section, onClose }) {
               ))}
             </div>
             <a className="panel__project-link" href={p.link} style={{ color: section.color }}>
-              Voir le projet →
+              Voir le projet <span aria-hidden="true">→</span>
             </a>
           </article>
         ))}

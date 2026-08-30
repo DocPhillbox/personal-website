@@ -4,8 +4,8 @@ import * as THREE from 'three'
 import { orbitPositionAt } from '../utils/orbit.js'
 
 const ORIGIN = new THREE.Vector3(0, 0, 0)
-const OVERVIEW_RADIUS = 11.05
-const CLOSEUP_RADIUS = 2.4
+const OVERVIEW_RADIUS = 17.58
+const CLOSEUP_RADIUS = 2.5
 
 export default function CameraRig({ selectedSection, reducedMotion, controlsRef }) {
   const desired = useRef(new THREE.Vector3())

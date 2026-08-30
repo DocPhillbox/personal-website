@@ -1,20 +1,26 @@
 :root {
-  --bg-void: #0b1220;
-  --surface-panel: #121a2bf2;
-  --surface-panel-solid: #121a2b;
-  --hairline: #26314a;
-  --text-primary: #e8ecf4;
-  --text-muted: #7c8aa6;
-  --text-dim: #4b5876;
+  /* Matches the scene clear colour so the DOM and the canvas share one ground. */
+  --bg-void: #05070f;
+  --surface-raised: rgba(12, 17, 28, 0.78);
+  --surface-solid: #0c111c;
 
-  --accent-bio: #5eb8ff;
-  --accent-skills: #4fd6b0;
-  --accent-projects: #ff8a5c;
-  --accent-core: #ffcf5c;
+  --hairline: rgba(255, 255, 255, 0.09);
+  --hairline-strong: rgba(255, 255, 255, 0.17);
 
-  --font-display: 'Space Grotesk', sans-serif;
-  --font-body: 'IBM Plex Sans', sans-serif;
-  --font-mono: 'IBM Plex Mono', monospace;
+  --text-primary: #eef2f8;
+  --text-muted: #97a3b8;
+  --text-dim: #5c6980;
+
+  --accent-bio: #45d0c8;
+  --accent-skills: #e2ab52;
+  --accent-projects: #2fae8f;
+  --accent-core: #ffd9a8;
+
+  --font-display: 'Outfit', system-ui, sans-serif;
+  --font-body: 'Outfit', system-ui, sans-serif;
+  --font-mono: 'Space Mono', ui-monospace, monospace;
+
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
 
   color-scheme: dark;
 }
@@ -34,7 +40,10 @@ body {
   background: var(--bg-void);
   color: var(--text-primary);
   font-family: var(--font-body);
+  font-size: 15px;
+  line-height: 1.6;
   -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
   overflow: hidden;
 }
 
@@ -45,16 +54,32 @@ a {
 button {
   font-family: inherit;
   cursor: pointer;
+  color: inherit;
 }
 
 :focus-visible {
-  outline: 2px solid var(--accent-bio);
+  outline: 1px solid var(--text-primary);
   outline-offset: 3px;
+  border-radius: 2px;
 }
 
 ::selection {
-  background: var(--accent-bio);
+  background: var(--text-primary);
   color: var(--bg-void);
+}
+
+/* Thin, unobtrusive scrollbar inside the panel. */
+.panel::-webkit-scrollbar {
+  width: 8px;
+}
+
+.panel::-webkit-scrollbar-thumb {
+  background: var(--hairline-strong);
+  border-radius: 4px;
+}
+
+.panel::-webkit-scrollbar-track {
+  background: transparent;
 }
 
 @media (prefers-reduced-motion: reduce) {
